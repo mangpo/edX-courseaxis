@@ -161,6 +161,7 @@ def main():
 	courses = os.listdir(os.getcwd() + "/" +  EXTRACT_TO)
 
 	for course_export in courses:
+                print "COURSE = ", course_export
 		if os.path.isdir(os.path.join(os.getcwd(), EXTRACT_TO, course_export)):
 			######################################################################################################
 			## This dictionary is used for linking purposes
@@ -196,8 +197,19 @@ def main():
 			root = tree.getroot()
 			course = root.attrib["course"]
 			org = root.attrib["org"]
+                        course_url_name = root.attrib["url_name"]
 			tag = "i4x"
 			sys.stdout.write(str(course) + "...\n")
+
+                        # parse 'course' folder of course export
+			sys.stdout.write("Parsing 'course' folder...\t")
+			tree = ET.parse(os.path.join(EXTRACT_TO, course_export, "course", course_url_name + ".xml"))
+                        root = tree.getroot()
+                        start = root.attrib["start"][:10]
+                        end = root.attrib["end"][:10]
+                        f = open("info.csv","a")
+                        f.write(course_export + "," + start + "," + end + "\n")
+			sys.stdout.write("success!\n")
 
 			# parse 'about' folder of course export
 			sys.stdout.write("Parsing 'about' folder...\t")
@@ -445,7 +457,7 @@ def main():
 			#### FOR COURSE_AXIS ####
 			### Needs to be refactored for readability and abstraction... ###
 			print "Generating CSV file now...\t"
-			course_axis = file("course_axis.csv", "w")
+			course_axis = file(course_export + "_axis.csv", "w")
 
 			for chapterHash in content_linker["chapter"]:
 				chapterEntry = content_linker["chapter"][chapterHash]
@@ -546,7 +558,7 @@ def main():
 	shutil.rmtree(os.path.join(os.getcwd(), EXTRACT_TO))
 	print "success!\n"
 
-	print content_linker["sequential"]
+	#print content_linker["sequential"]
 
 def formatEntry(urlhash, categoryname, displayname, filepath=[] ):
 	entry = []
