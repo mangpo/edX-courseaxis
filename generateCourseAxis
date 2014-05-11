@@ -204,16 +204,6 @@ def main():
 			tag = "i4x"
 			sys.stdout.write(str(course) + "...\n")
 
-                        # parse 'course' folder of course export
-			sys.stdout.write("Parsing 'course' folder...\t")
-			tree = ET.parse(os.path.join(EXTRACT_TO, course_export, "course", course_url_name + ".xml"))
-                        root = tree.getroot()
-                        start = root.attrib["start"][:10]
-                        end = root.attrib["end"][:10]
-                        f = open("info.csv","a")
-                        f.write(course_export + "," + start + "," + end + "\n")
-			sys.stdout.write("success!\n")
-
 			# parse 'about' folder of course export
 			sys.stdout.write("Parsing 'about' folder...\t")
 			f = open(os.path.join(os.getcwd(), EXTRACT_TO, course_export, "about", "overview.html"), "r")
@@ -555,6 +545,17 @@ def main():
 					else:
 						print "Strange error..."
 						exit(1)
+
+                        # parse 'course' folder of course export
+			sys.stdout.write("Parsing 'course' folder...\t")
+			tree = ET.parse(os.path.join(EXTRACT_TO, course_export, "course", course_url_name + ".xml"))
+                        root = tree.getroot()
+                        start = root.attrib["start"][:10]
+                        end = root.attrib["end"][:10]
+                        f = open("info.csv","a")
+                        f.write(course_export + "," + start + "," + end + "\n")
+			sys.stdout.write("success!\n")
+
           except Exception as e:
             f = open("axis.error", "a")
             f.write("COURSE " + course_export)
