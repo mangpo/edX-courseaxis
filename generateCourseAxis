@@ -557,6 +557,7 @@ def main():
 						exit(1)
           except Exception as e:
             f = open("axis.error", "a")
+            f.write("COURSE " + course_export)
             traceback.print_exc(file=f)
             f.close()
             
