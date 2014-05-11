@@ -12,7 +12,7 @@
 # Version: 0.03a
 
 
-import sys, os, glob, json, tarfile, shutil, requests
+import sys, os, glob, json, tarfile, shutil, requests, traceback
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import tostring
 import stat
@@ -160,7 +160,10 @@ def main():
 
 	courses = os.listdir(os.getcwd() + "/" +  EXTRACT_TO)
 
+
+        os.system("rm axis.error")
 	for course_export in courses:
+          try:
                 print "COURSE = ", course_export
 		if os.path.isdir(os.path.join(os.getcwd(), EXTRACT_TO, course_export)):
 			######################################################################################################
@@ -552,6 +555,11 @@ def main():
 					else:
 						print "Strange error..."
 						exit(1)
+          except Exception as e:
+            f = open("axis.error", "a")
+            traceback.print_exc(file=f)
+            f.close()
+            
 
 	# remove unzipped course export folder from disk to clear space	
 	sys.stdout.write("Clearing space from extracted course exports...\t")
