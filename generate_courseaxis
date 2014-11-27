@@ -19,6 +19,7 @@ import stat
 
 # SETTINGS
 EXTRACT_TO = "unzipped_exports"
+CSV_FILES = "csv_files"
 OPTION = False
 
 # Removes all slashes from file path
@@ -67,19 +68,26 @@ def course_axis_write(row):
 
 
 def update():
-	script_url = 'https://raw.githubusercontent.com/kk415kk/datascrub/master/generateCourseAxis'
-	req = requests.get(script_url)
-	if req.ok:
-		print "Updating script..."
-		update = req.text
-		mode = os.stat(os.getcwd(), "generateCourseAxis")
+    script_url = 'https://raw.githubusercontent.com/kk415kk/datascrub/master/generateCourseAxis'
+    req = requests.get(script_url)
+    if req.ok:
+        print "Updating script..."
+        update = req.text
+        original_script = file("generateCourseAxis", "r")
+        if update == original_script.read():
+            print "No updates necessary!"
+            pass
+        else:
+            mode = int(os.stat(os.path.join(os.getcwd(), "generateCourseAxis"))[ST_MODE])
 
-		#shutil.rmtree(os.path.join(os.getcwd(), "generateCourseAxis"))
-		new_script = file("generateCourseAxis2","w")
-		new_script.write(req.text)
-		os.chmod(new_script, mode)
+            new_script = file("generateCourseAxis","w")
+            new_script.write(req.text)
 
-		os.execl(sys.executable, *([sys.executable]+sys.argv))
+            fd = os.open("generateCourseAxis", os.O_RDWR)
+            os.fchmod(fd, mode)
+            os.close(fd)
+            print "Updated successfully!"
+
 
 #############################################################################
 # To better understand parser:
@@ -123,6 +131,7 @@ def main():
 	# make a directory for tar files to be extracted to
 	try:
 		os.makedirs(EXTRACT_TO)
+		os.makedirs(CSV_FILES)
 	except OSError:
 		pass
 
@@ -135,6 +144,7 @@ def main():
 			exit(1)
 
 		# extract tarfiles to folder_of_parser/EXTRACT_TO
+                print "path=", os.getcwd() + "/" + course_exports
 		files = os.listdir(os.getcwd() + "/" + course_exports)
 
 		for archive in files:
@@ -186,6 +196,7 @@ def main():
 			#######################################################################################################
 			content_linker = { "chapter" : {},	"sequential" : {},	"vertical" : {} }
 			module_list = []
+                        policies_tabs = []
 
 			# grab root folder of course export
 			root_folder = os.path.dirname(os.path.join(os.getcwd(), EXTRACT_TO, course_export))
@@ -298,6 +309,7 @@ def main():
 					key = "course" + "/" + clean(alt_course_name)
 					entry_dict["metadata"]["tabs"] = COURSE_INFO[key]["tabs"]
 					entry_dict["metadata"]["discussion_topics"] = COURSE_INFO[key]["discussion_topics"]
+                                        policies_tabs = entry_dict["metadata"]["tabs"]
 				# grading_policy stores information
 				elif json_file == "grading_policy.json":
 					GRADER_CONTENTS = json.load(json_data)
@@ -446,11 +458,16 @@ def main():
 					print "No '" + module_type + "' folder in this course..."
 					pass
 
-
 			#### FOR COURSE_AXIS ####
 			### Needs to be refactored for readability and abstraction... ###
 			print "Generating CSV file now...\t"
-			course_axis = file(course_export + "_axis.csv", "w")
+			course_axis = open(os.path.join(os.getcwd(), CSV_FILES, course_export + "_axis.csv"), "w")
+
+                        for tab in policies_tabs:
+                          if "url_slug" in tab:
+                            entry = formatEntry(tab["url_slug"], "tab", tab["name"], [])
+                            output = course_axis_write(entry)
+                            course_axis.write(output + "\n")
 
 			for chapterHash in content_linker["chapter"]:
 				chapterEntry = content_linker["chapter"][chapterHash]
@@ -546,13 +563,12 @@ def main():
 						print "Strange error..."
 						exit(1)
 
-                        # parse 'course' folder of course export
-			sys.stdout.write("Parsing 'course' folder...\t")
+			sys.stdout.write("Writing info.csv...\t")
 			tree = ET.parse(os.path.join(EXTRACT_TO, course_export, "course", course_url_name + ".xml"))
                         root = tree.getroot()
                         start = root.attrib["start"][:10]
                         end = root.attrib["end"][:10]
-                        f = open("info.csv","a")
+                        f = open(os.path.join(os.getcwd(), CSV_FILES, "info.csv"),"a")
                         f.write(course_export + "," + start + "," + end + "\n")
 			sys.stdout.write("success!\n")
 
@@ -582,6 +598,11 @@ def formatEntry(urlhash, categoryname, displayname, filepath=[] ):
 	path = ""
 	module_id = ""
 	data = ""
+
+	# bug with non-closed quotes
+	quoteCount = name.count("\"")
+	if quoteCount % 2 == 1:
+		name = name.replace("\"", "")
 
 	for f in filepath:
 		path = path + "/" + str(f)

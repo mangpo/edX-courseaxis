@@ -5,15 +5,23 @@
 #
 # Developed in Python 2.7. Please report any bugs to the author.
 # 
+# Github repo: https://github.com/kk415kk/datascrub
+# README: https://github.com/kk415kk/datascrub/README.md
+# NOTES: If the script does not have run permissions, please run "chmod +x parse" to give it
+# executable permissions.
+# 
 # Author: Kevin Kao
 # Email: kkao@berkeley.edu
 # Creation Date: 4/26/14
-# Last Updated: 5/9/14
+# Last Updated: 5/19/14
 # Version: 0.05b
+
+#DEPENDENCIES
 import sys, os, glob, json, tarfile, shutil, requests
 import xml.etree.ElementTree as ET
-from xml.etree.ElementTree import tostring
 import stat
+from multiprocessing import Pool
+from xml.etree.ElementTree import tostring
 from stat import *
 
 # SETTINGS
@@ -29,47 +37,55 @@ def clean(word):
 		word = word[0:len(word)-1]
 	return word
 
+# Help page
 def info(help=False):
 	if not help:
 		print "Invalid arguments. " \
-			"Usage: ./parse [arg || -m arg1 arg2 ...]"
+			"Usage: ./generate_modulestore [arg || -m arg1 arg2 ...]"
 	else:
 		print "=========== HELP =========="
 	print "[Options]:"
 	print "-m args\t: Used to specify multiple file paths to single course export folders"
 	print "-h\t: Used for help page"
-	print "NOTE: If no options are specified, the script defaults to -az\n"
+	print "NOTE: If no options are specified, the script defaults to taking in a single folder" \
+			" with all archives in folder\n"
 	print "Example usages:"
-	print "./parse folder"
-	print "./parse -m folder/courseExport1.zip folder/courseExport2.zip ..."
+	print "./generate_modulestore folder"
+	print "./generate_modulestore -m folder/courseExport1.zip folder/courseExport2.zip ..."
 
 	if help:
 		print "==========================="
 
+# Update feature: simply run ./generate_modulestore -u
 def update():
-	script_url = 'https://raw.githubusercontent.com/kk415kk/datascrub/master/generateCourseAxis'
+	script_url = 'https://raw.githubusercontent.com/kk415kk/datascrub/master/generate_modulestore'
 	req = requests.get(script_url)
 	if req.ok:
 		print "Updating script..."
 		update = req.text
-		original_script = file("generateCourseAxis", "r")
+		original_script = file("generate_modulestore", "r")
 		if update == original_script.read():
 			print "No updates necessary!"
 			pass
 		else:
-			mode = int(os.stat(os.path.join(os.getcwd(), "generateCourseAxis"))[ST_MODE])
+			mode = int(os.stat(os.path.join(os.getcwd(), "generate_modulestore"))[ST_MODE])
 
-			new_script = file("generateCourseAxis","w")
+			new_script = file("generate_modulestore","w")
 			new_script.write(req.text)
 
-			fd = os.open("generateCourseAxis", os.O_RDWR)
+			fd = os.open("generate_modulestore", os.O_RDWR)
 			os.fchmod(fd, mode)
 			os.close(fd)
 			print "Updated successfully!"
-
+# Logging feature for errors
 def log(logfile, entry):
 	logfile.write(str(entry))
 	logfile.write("\n")
+
+# Unused as of 0.05b - to be developed into multiprocessing
+def processFiles():
+	print ""
+
 
 #############################################################################
 # To better understand parser:
@@ -124,10 +140,10 @@ def main():
 			exit(1)
 
 		# extract tarfiles to folder_of_parser/EXTRACT_TO
-		files = os.listdir(os.getcwd() + "/" + course_exports)
+		files = os.listdir(os.path.join(os.getcwd(),course_exports))
 
 		for archive in files:
-			path_to_archive = os.getcwd() + "/" + course_exports + "/" + archive
+			path_to_archive = os.path.join(os.getcwd(), course_exports, archive)
 			if archive.endswith(".tar.gz") or archive.endswith(".zip"):
 				print "Extracting course " + str(archive) + "..."
 				archive = tarfile.open(path_to_archive, 'r:gz')
@@ -141,21 +157,25 @@ def main():
 			if os.path.isdir(path_to_archive):
 				print "Invalid file path: " + path_to_archive
 				print "File path should be to a specific .zip file, not a folder. Perhaps you meant to run without the -m parameter?"
-				print "Run ./parse --help for help"
+				print "Run ./generate_modulestore --help for help"
 				exit(1)
 			print "Extracting course " + path_to_archive + "..."
 			archive = tarfile.open(path_to_archive, 'r:gz')
-			archive.extractall(os.getcwd() + "/" + EXTRACT_TO)
+			archive.extractall(os.path.join(os.getcwd(), EXTRACT_TO))
 
-	courses = os.listdir(os.getcwd() + "/" +  EXTRACT_TO)
+	courses = os.listdir(os.path.join(os.getcwd(),  EXTRACT_TO))
 
 	try:
-		outfile = file("test_modulestore.json", "w")
+		outfile = file("modulestore.json", "w")
 		logfile = open("logfile.log", "w")
 		logfile.write("Starting logfile:\n")
 	except:
 		print "Error in creating modulestore.json and logfile. Please check permissions."
 		exit(1)
+
+
+	# pool = Pool(processes=4)
+	# pool.map(processFiles, courses)
 
 	for course_export in courses:
 		if os.path.isdir(os.path.join(os.getcwd(), EXTRACT_TO, course_export)):
